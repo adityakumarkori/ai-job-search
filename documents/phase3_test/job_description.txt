@@ -1,0 +1,1 @@
+We are looking for a Junior Backend Developer with 0-2 years of experience in Python and REST APIs. The role involves designing, implementing, and maintaining backend services, writing unit tests, and participating in code reviews.

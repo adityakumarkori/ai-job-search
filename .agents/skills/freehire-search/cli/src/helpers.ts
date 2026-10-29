@@ -140,6 +140,7 @@ export interface FreehireJob {
   // the individual fields are what may be absent.
   enrichment: {
     seniority?: string
+    experience_years_min?: number
     category?: string
     employment_type?: string
     salary_min?: number
@@ -169,6 +170,8 @@ export interface JobResult {
   date: string | null
   url: string
   work_mode: string | null
+  seniority: string | null
+  experience_years_min: number | null
   regions: string[]
   countries: string[]
   skills: string[]
@@ -203,6 +206,7 @@ export function contractDate(value: string | null | undefined): string | null {
 }
 
 export function toResult(j: FreehireJob): JobResult {
+  const min = j.enrichment?.experience_years_min
   return {
     id: j.public_slug,
     title: decodeHtmlEntities(j.title || "").trim() || "(untitled)",
@@ -212,6 +216,9 @@ export function toResult(j: FreehireJob): JobResult {
     date: contractDate(j.posted_at),
     url: j.url,
     work_mode: j.work_mode || null,
+    seniority: j.enrichment?.seniority || null,
+    experience_years_min:
+      typeof min === "number" && Number.isFinite(min) && min >= 0 ? min : null,
     regions: j.regions,
     countries: j.countries,
     skills: j.skills,

@@ -1,6 +1,6 @@
 # Search Queries for Job Scraper
 
-<!-- SETUP: Customize these queries based on your skills, target roles, and location -->
+<!-- India-focused Java/backend search set. Keep candidate-specific details in CLAUDE.md. -->
 
 ## Installed portal CLIs (primary for `/scrape`)
 
@@ -12,69 +12,72 @@ The `site:` query templates in this file are the **WebSearch fallback** — for 
 
 ## Search Sites
 
-Primary (your market's job boards - scaffold one with `/add-portal`):
-- **[YOUR_JOB_BOARD]** - your market's largest general job board
-- **linkedin.com/jobs** - LinkedIn job listings (filter: [YOUR_COUNTRY] / [YOUR_CITY]); also covered by `linkedin-search` CLI
-- **[YOUR_INDUSTRY_JOB_BOARD]** - a niche/industry board for your field (optional)
-- **[YOUR_ADDITIONAL_JOB_BOARD]** - another major board for your market (optional)
+Primary (India-focused boards and installed CLIs):
+- **Naukri** (`naukri.com`) - largest general job board for India; use the WebSearch fallback unless a CLI exists
+- **Indeed India** (`indeed.co.in`) - general job listings; useful for remote and hybrid filters
+- **linkedin.com/jobs** - only when the user explicitly asks for LinkedIn, and only through `linkedin-search` when permitted; automated LinkedIn access is otherwise against its terms
+- **Company career pages** - preferred for known product companies and startups
 
-Secondary (company career pages via Google):
-- Direct Google searches with `site:` filters for known target companies
+The installed portal CLIs remain primary for `/scrape`; these `site:` queries are the WebSearch fallback.
 
 ## Query Categories
 
-Queries are grouped by priority. Write **each category in every language from your Languages table** (see Language scope above). Combine each query with your location terms (e.g. your city, region, or metro area) where the site supports it.
+Queries are grouped by priority and target India. Write **each category in every language from your Languages table** (see Language scope above). Add `remote` or `hybrid` where the board supports it; otherwise include India as the location.
 
-**Organize by function, not job title.** The same underlying work carries different titles across companies and markets (a "Data Scientist" role at one employer may be posted as "Insights Analyst" or "Data Consultant" at another). Name each priority category after the function it covers, and list several plausible job titles as query variants within that category rather than betting an entire priority tier on one exact title string.
+**Organize by function, not job title.** Backend work is posted as "Java Backend Developer", "Backend Engineer", "Spring Boot Developer", "SDE 1 Backend", and similar titles. Use several variants rather than one exact title.
 
-### Priority 1: [YOUR_PRIMARY_ROLE_TYPE]
+### Priority 1: Java / Backend Engineering
 
-These match your strongest and most desired career direction.
-
-```
-site:[YOUR_JOB_BOARD] "[YOUR_PRIMARY_JOB_TITLE_1]" [YOUR_CITY]
-site:[YOUR_JOB_BOARD] "[YOUR_PRIMARY_JOB_TITLE_2]" [YOUR_CITY]
-site:[YOUR_JOB_BOARD] "[YOUR_KEY_SKILL]" [YOUR_CITY]
-site:linkedin.com/jobs "[YOUR_PRIMARY_JOB_TITLE_1]" [YOUR_COUNTRY]
-```
-
-### Priority 2: [YOUR_DOMAIN_EXPERTISE]
-
-These match your domain expertise.
+These match the strongest and most desired career direction.
 
 ```
-site:[YOUR_JOB_BOARD] [YOUR_DOMAIN_KEYWORD_1] [YOUR_CITY] OR [YOUR_REGION]
-site:[YOUR_JOB_BOARD] [YOUR_DOMAIN_KEYWORD_2] [YOUR_COUNTRY]
-site:linkedin.com/jobs [YOUR_DOMAIN_KEYWORD_1] [YOUR_CITY] [YOUR_COUNTRY]
+site:naukri.com "Java Backend Developer" India
+site:naukri.com "Backend Engineer" Java India
+site:indeed.co.in "Java Backend Developer" remote India
+site:indeed.co.in "Backend Engineer" Java hybrid India
+site:naukri.com "Java Developer" Spring Boot India
 ```
 
-### Priority 3: [YOUR_ADJACENT_ROLE_TYPE]
+### Priority 2: Spring Boot and Java Services
 
-Adjacent roles you could pivot into.
-
-```
-site:[YOUR_JOB_BOARD] "[YOUR_ADJACENT_TITLE_1]" [YOUR_KEY_SKILL] [YOUR_CITY]
-site:[YOUR_JOB_BOARD] "[YOUR_ADJACENT_TITLE_2]" [YOUR_KEY_SKILL] [YOUR_CITY]
-```
-
-### Priority 4: Broader Technical / Consulting
-
-Wider net for general technical roles.
+These match the core Java service-development stack.
 
 ```
-site:[YOUR_JOB_BOARD] [YOUR_KEY_SKILL] developer [YOUR_CITY]
-site:linkedin.com/jobs "[YOUR_KEY_SKILL] developer" [YOUR_CITY]
-site:[YOUR_JOB_BOARD] "technical consultant" [YOUR_DOMAIN] [YOUR_CITY]
+site:naukri.com "Spring Boot Developer" India
+site:naukri.com "Java Microservices" developer India
+site:indeed.co.in "Spring Boot" backend engineer remote India
+site:naukri.com "Java" "REST API" backend India
+```
+
+### Priority 3: Early-Career Backend Roles
+
+Adjacent early-career titles with the same backend function.
+
+```
+site:naukri.com "Associate Backend Developer" India
+site:naukri.com "SDE 1 Backend" India
+site:indeed.co.in "Junior Java Developer" remote India
+site:naukri.com "Software Engineer 1" Java India
+```
+
+### Priority 4: Broader Backend / Platform
+
+Wider net for general backend and platform roles.
+
+```
+site:naukri.com "Backend Developer" Java India
+site:indeed.co.in "Backend Developer" India remote
+site:naukri.com "Software Engineer" backend Java India
+site:indeed.co.in "Java Engineer" India hybrid
 ```
 
 ## Location Filter
 
-When evaluating results, verify the job location is within reasonable commute distance from your home. Define acceptable areas:
-- [YOUR_CITY] and surrounding areas
-- [ACCEPTABLE_AREA_1]
-- [ACCEPTABLE_AREA_2]
-- [BORDERLINE_AREA] (borderline - ~X min by transit)
-- [TOO_FAR_AREA] (too far)
+When evaluating results, verify the job is in India and compatible with the user's work arrangement:
+- India: remote or hybrid roles are acceptable
+- Major tech hubs for onsite/hybrid: Bengaluru, Hyderabad, Pune, Chennai, Noida, Gurugram, Mumbai
+- Outside India: excluded unless the posting is explicitly remote and open to candidates in India
+- A posting with no clear location: include only if it is explicitly remote; flag the ambiguity
 
 ## Language Filter
 
@@ -83,6 +86,13 @@ Your working languages and levels are in CLAUDE.md's Languages table. When filte
 ## Date Filter
 
 Only include jobs posted within the last 14 days, or with an application deadline that has not yet passed. If a posting date cannot be determined, include it but flag as "date unknown".
+
+## Experience Filter
+
+Scraping may surface roles above the 0-2 year target; do not hide them. `/rank` runs
+`tools/experience_gate.py` on every posting and keeps `REVIEW` or `INELIGIBLE` jobs out
+of the shortlist with an honest reason. Missing experience text is never treated as
+zero years.
 
 ## Adapting Queries
 
