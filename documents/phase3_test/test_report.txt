@@ -1,0 +1,113 @@
+Phase 3.1 — Synthetic CV and Cover‑Letter Draft Generation Report
+====================================================================
+
+1. Synthetic data
+-----------------
+- Profile: documents/phase3_test/synthetic_profile.json
+  * name: Jane Doe
+  * email: jane.doe@example.com
+  * phone: +1-555-123-4567
+  * linkedin: https://linkedin.com/in/janedoe
+  * github: https://github.com/janedoe
+  * degrees: [Bachelor of Science in Computer Science]
+  * experience: one entry (Software Engineer at Tech Corp, 2022‑Present)
+  * skills: [Python, Git, Docker]
+
+- Job description: documents/phase3_test/job_description.txt
+  "We are looking for a Junior Backend Developer with 0-2 years of experience in Python and REST APIs."
+
+2. Experience gate behaviour
+----------------------------
+Command: python tools/experience_gate.py evaluate --text "We are looking for a Junior Backend Developer with 0-2 years of experience in Python and REST APIs."
+Verdict : ELIGIBLE
+Reason  : The posting gives a 0-2 year range.
+allowed_for_apply : true
+
+3. Draft generation (ELIGIBLE)
+-----------------------------
+Because the gate returned ELIGIBLE, the generator produced two .tex drafts:
+
+- documents/phase3_test/cv_main_Junior_Backend_Developer.tex
+- documents/phase3_test/cover_letters_cover_Junior_Backend_Developer.tex
+
+Both files were created using the existing project templates (moderncv and cover.cls)
+with the synthetic personal data substituted for the top‑level placeholders
+(\name, \phone, \email, \extrainfo for the CV; \name for the cover letter).
+
+4. Draft generation (blocked gate)
+----------------------------------
+When the job description was changed to give a minimum of 5 years of experience,
+the experience gate returned INELIGIBLE and the generator aborted without writing
+any .tex files.  No application documents were created.
+
+5. Placeholder validation
+-------------------------
+After substitution the CV template still contained a number of LaTeX control
+sequences and bracket‑based placeholders that are part of the original template
+(e.g. \section, \begin{itemize}, \cventry, etc.).  These are not user‑visible
+placeholders and are expected; the script only replaced the four personal‑data
+lines.  No remaining "[First]" "[Last]" etc. were found.
+
+6. PDF verification status
+-------------------------
+- LaTeX (lualatex / xelatex) is not installed in the current environment,
+  so the generated .tex files cannot be compiled to PDF within this session.
+- pypdf is available and can extract text from PDFs, but no PDFs exist yet.
+- Layout verification (verify_layout.py) requires pdftotext -bbox, which is also
+  absent; it would report “skipped” (degraded mode).
+- Consequently, PDF page‑count and layout checks are marked as **unavailable** for
+  this run.  The user will need a LaTeX distribution and Poppler to perform
+  full PDF verification.
+
+7. Safety and compliance
+------------------------
+- Only synthetic data was used; the real 01‑candidate‑profile.md was not read or
+  modified.
+- No network requests were made beyond the experience‑gate subprocess.
+- No application was submitted, no email sent, no files uploaded outside
+  documents/phase3_test/ (which is git‑ignored).
+- The experience‑gate integration (ELIGIBLE / REVIEW / INELIGIBLE) works as
+  designed and blocks document generation for non‑eligible jobs.
+- All existing OpenCode plugins, the global configuration, and the email
+  automation plugin remain untouched.
+
+4. Files created or modified
+----------------------------
+Created:
+  documents/phase3_test/synthetic_profile.json
+  documents/phase3_test/job_description.txt
+  documents/phase3_test/cv_main_Junior_Backend_Developer.tex
+  documents/phase3_test/cover_letters_cover_Junior_Backend_Developer.tex
+  documents/phase3_test/test_report.txt
+
+No existing files were modified.
+
+5. Test run outcome
+-------------------
+- Experience gate test: ELIGIBLE (as above).
+- Draft generation: successful for ELIGIBLE case; aborted for INELIGIBLE case.
+- No unrelated test suite changes.
+
+6. Known limitations
+---------------------
+- No LaTeX distribution → PDF compilation and layout verification cannot be
+  performed automatically in this environment.
+- The placeholder replacement in the templates is intentionally minimal (only
+  the four personal‑data lines).  Remaining LaTeX commands are unchanged; a full
+  compile would require the user’s LaTeX installation and possibly manual
+  adjustment of the generated source.
+- The script is deliberately narrow in scope; expanding it to handle degree
+  entries, experience bullets, or custom template features is left for a later
+  phase after LaTeX is available.
+
+7. Next steps (pending explicit approval)
+----------------------------------------
+- Install a LaTeX distribution (lualatex / xelatex) and Poppler utilities if
+  PDF verification is required.
+- Expand the generation script to substitute degree entries, experience bullets,
+  and skills lists if desired.
+- Add more synthetic scenarios (different gate verdicts, different job titles).
+- Integrate the generation step into the /apply workflow as described in the
+  Phase 3 plan.
+
+---End of Report---
