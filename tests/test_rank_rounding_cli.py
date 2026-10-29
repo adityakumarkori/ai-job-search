@@ -8,6 +8,13 @@ from tempfile import TemporaryDirectory
 
 TOOL = Path(__file__).resolve().parent.parent / "tools/rank_state.py"
 DIMENSIONS = ("technical", "experience", "behavioral", "career")
+ELIGIBLE_GATE = {
+    "verdict": "ELIGIBLE", "reason_code": "eligible_range",
+    "reason": "The posting gives a 0-2 year range.", "minimum_years": 0,
+    "maximum_years": 2, "source": "description",
+    "evidence": [{"source": "description", "text": "0-2 years", "start": 0, "end": 9}],
+    "checked_at": "2026-10-16T12:00:00Z", "parser_version": "1.0.0",
+}
 
 
 class ExactRankRoundingCLI(unittest.TestCase):
@@ -22,6 +29,7 @@ class ExactRankRoundingCLI(unittest.TestCase):
             results.write_text(json.dumps([{
                 "key": key, "status": "scored", "scores": dict(zip(DIMENSIONS, values)),
                 "location_verdict": "PASS", "language_gate": "PASS", "deadline": None,
+                "experience_gate": dict(ELIGIBLE_GATE),
             } for key, values in cases.items()]), encoding="utf-8")
             result = subprocess.run([
                 sys.executable, str(TOOL), "apply", "--state", str(state),

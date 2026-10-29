@@ -102,7 +102,21 @@ describe("toDetail — adds cleaned description + enrichment", () => {
   test("null enrichment fields when the enrichment object is empty", () => {
     const d = toDetail(job({ enrichment: {} }));
     expect(d.seniority).toBeNull();
+    expect(d.experience_years_min).toBeNull();
     expect(d.salary).toBeNull();
+  });
+
+  test("surfaces structured experience metadata on search and detail", () => {
+    const j = job({ enrichment: { seniority: "junior", experience_years_min: 0 } });
+    expect(toResult(j).seniority).toBe("junior");
+    expect(toResult(j).experience_years_min).toBe(0);
+    expect(toDetail(j).experience_years_min).toBe(0);
+  });
+
+  test("rejects missing or invalid experience metadata instead of inventing a value", () => {
+    expect(toResult(job()).experience_years_min).toBeNull();
+    expect(toResult(job({ enrichment: { experience_years_min: -1 } })).experience_years_min).toBeNull();
+    expect(toResult(job({ enrichment: { experience_years_min: Number.NaN } })).experience_years_min).toBeNull();
   });
 });
 

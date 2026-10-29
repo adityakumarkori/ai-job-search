@@ -26,7 +26,10 @@ sweep follows rule 6 exactly (defensive date parsing, an absent deadline left
 alone, `--all` making a retired entry revivable).
 
 Nothing here fetches a posting or judges a fit. Scoring stays with the model;
-this only removes the state file from the conversation.
+this only removes the state file from the conversation. The one deterministic
+judgment added here is the 0-2 year experience gate: `apply` normalizes the gate
+returned by `tools/experience_gate.py`, stores it on the entry, and keeps only
+eligible or explicitly overridden jobs in `ranked`/`candidates`.
 
 Usage:
   python3 tools/rank_state.py candidates [--all] [--focus TEXT] [--limit N]
@@ -47,6 +50,12 @@ import unicodedata
 from datetime import date, datetime, timedelta, timezone
 from fractions import Fraction
 from pathlib import Path
+
+TOOLS = Path(__file__).resolve().parent
+if str(TOOLS) not in sys.path:
+    sys.path.insert(0, str(TOOLS))
+
+import experience_gate
 
 ROOT = Path(__file__).resolve().parent.parent
 STATE = ROOT / "job_scraper" / "seen_jobs.json"
@@ -210,6 +219,8 @@ def cmd_candidates(args) -> int:
                 "portal": entry.get("portal"),
                 "deadline": entry.get("deadline"),
                 "posted_date": entry.get("posted_date"),
+                "seniority": entry.get("seniority"),
+                "experience_years_min": entry.get("experience_years_min"),
             }
         )
 
@@ -424,6 +435,20 @@ def cmd_apply(args) -> int:
             )
             continue
 
+        raw_gate = result.get("experience_gate")
+        if raw_gate is None:
+            gate = experience_gate.review_gate(
+                "review_missing_gate",
+                "The scoring result had no deterministic experience gate; re-score with it before applying.",
+                now,
+            )
+        else:
+            gate = experience_gate.normalize_gate(raw_gate, now)
+        entry["experience_gate"] = gate
+        experience_allowed = experience_gate.override_allows(
+            gate, entry.get("experience_override")
+        )
+
         legacy = entry_location_verdict(entry)
         if entry.get("location") in ("PASS", "FAIL", "FLAG"):
             entry.pop("location", None)  # legacy verdict, never a place
@@ -485,6 +510,11 @@ def cmd_apply(args) -> int:
                 "strengths": entry.get("strengths", []),
                 "gaps": entry.get("gaps", []),
                 "guard": entry.get("guard"),
+                "experience_verdict": gate["verdict"],
+                "experience_reason_code": gate["reason_code"],
+                "experience_reason": gate["reason"],
+                "experience_override": entry.get("experience_override"),
+                "experience_allowed": experience_allowed,
             }
         )
 
@@ -494,12 +524,14 @@ def cmd_apply(args) -> int:
     rows.sort(key=lambda r: (r["score"], r["urgent"]), reverse=True)
     veto = lambda r: r["location_verdict"] == "FAIL" or r["language_gate"] == "FAIL"
     vetoed = [r for r in rows if veto(r)]
-    ranked = [r for r in rows if not veto(r)]
+    experience_blocked = [r for r in rows if not veto(r) and not r["experience_allowed"]]
+    ranked = [r for r in rows if not veto(r) and r["experience_allowed"]]
     print(
         json.dumps(
             {
                 "ranked": ranked,
                 "vetoed": vetoed,
+                "experience_blocked": experience_blocked,
                 "expired": expired,
                 "unreachable": unreachable,
                 "gave_up": gave_up,

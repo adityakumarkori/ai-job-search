@@ -1,4 +1,4 @@
-# Phase 1 Safety Rules
+# Safety Rules
 
 These rules override optimistic wording in the canonical files when the two differ.
 
@@ -37,17 +37,30 @@ These rules override optimistic wording in the canonical files when the two diff
 - Keep posting text out of the repository until the archive step explicitly writes
   it to the local application folder.
 
+## Experience gate
+
+- Every scored posting must carry an `experience_gate` object from
+  `tools/experience_gate.py`. Missing, malformed, `REVIEW`, and `INELIGIBLE` gates
+  stay out of `ranked` and `candidates`.
+- Only an explicit user-approved override with a written reason can allow a
+  non-eligible stored job to proceed. A stale override is invalid after the gate is
+  re-checked; `allowed_for_apply` must be true before `/apply`.
+- Never claim a gate passed when it did not run, and never infer zero years of
+  experience from silence.
+
 ## Command-specific limits
 
 - `/scrape`: prefer the FreeHire portal first. Do not run the LinkedIn portal unless
   the user explicitly asks for it; automated LinkedIn access is against its terms.
   Run portal CLIs sequentially with the local Bun shim. Do not launch `general`
   subagents for parallel searching.
-- `/rank`: use only `posting-scorer` subagents. The strict 0-2 experience gate is
-  Phase 2 and is not implemented. Report that limitation; do not claim it ran.
-- `/apply`: use `posting-fetcher` and `application-reviewer` only. Stop before Step 5
-  PDF compilation and inspection because the toolchain is absent. Do not claim a
-  PDF, page-count, layout, or ATS check passed.
+- `/rank`: use only `posting-scorer` subagents. Run `tools/posting_guard.py` and
+  `tools/experience_gate.py` on every posting; report `experience_blocked` jobs and
+  their reasons instead of quietly dropping them.
+- `/apply`: use `posting-fetcher` and `application-reviewer` only. Require
+  `tools/experience_gate.py check`/`evaluate` to allow the job before drafting. Stop
+  before Step 5 PDF compilation and inspection because the toolchain is absent. Do
+  not claim a PDF, page-count, layout, or ATS check passed.
 - `/outcome`: draft follow-ups and thank-you notes only. Never send them. Do not
   copy submitted files over an existing archive.
 - `/html-report`: write a local HTML file only. Use "Generated with OpenCode" in the

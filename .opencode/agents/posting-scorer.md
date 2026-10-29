@@ -33,6 +33,11 @@ list, compact rubric, statuses, and JSON shape; use that prompt as authoritative
 - Use `.opencode\bin\bun.cmd` for portal `detail` commands; never install packages.
 - Gate every retrieved body with `tools/posting_guard.py` before scoring it. Use the
   cleaned text and put the verdict line verbatim in `"guard"`.
+- Then run `python tools/experience_gate.py evaluate --in <file> --title <title>`
+  (add `--structured-min`, `--seniority`, and `--preserve <file>` when known).
+  For inline `WebFetch` text use `--text`. Put the returned object verbatim in
+  `"experience_gate"`. If the gate cannot run, return `"experience_gate": null`;
+  never invent an eligible gate.
 - Exhaust the canonical escalation before returning `expired` or `unreachable`.
   `expired` requires positive evidence the posting is closed; retrieval failure is
   `unreachable` with a short `fetch_error`.

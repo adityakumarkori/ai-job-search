@@ -78,6 +78,13 @@ class ToolsWriteUtf8(unittest.TestCase):
         results.write_text(json.dumps([{
             "key": "a", "status": "scored",
             "scores": {"technical": 80, "experience": 80, "behavioral": 80, "career": 80},
+            "experience_gate": {
+                "verdict": "ELIGIBLE", "reason_code": "eligible_range",
+                "reason": "The posting gives a 0-2 year range.", "minimum_years": 0,
+                "maximum_years": 2, "source": "description",
+                "evidence": [{"source": "description", "text": "0-2 years", "start": 0, "end": 9}],
+                "checked_at": "2026-09-21T12:00:00Z", "parser_version": "1.0.0",
+            },
         }]), encoding="utf-8")
         proc = run_legacy_stdout([
             TOOLS / "rank_state.py", "apply", "--results", results, "--state", state, "--today", "2026-09-21",

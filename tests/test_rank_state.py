@@ -24,6 +24,33 @@ TOOL = REPO / "tools" / "rank_state.py"
 TODAY = "2026-09-03"
 
 
+def eligible_gate(**over):
+    base = {
+        "verdict": "ELIGIBLE",
+        "reason_code": "eligible_range",
+        "reason": "The posting gives a 0-2 year range.",
+        "minimum_years": 0,
+        "maximum_years": 2,
+        "source": "description",
+        "evidence": [
+            {"source": "description", "text": "0-2 years", "start": 0, "end": 9}
+        ],
+        "checked_at": "2026-09-03T12:00:00Z",
+        "parser_version": "1.0.0",
+    }
+    base.update(over)
+    return base
+
+
+def review_gate(**over):
+    return eligible_gate(
+        verdict="REVIEW",
+        reason_code="review_ambiguous_range",
+        reason="The posting gives a 1-3 year range.",
+        **over,
+    )
+
+
 def entry(**over):
     base = {
         "title": "SOC Analyst",
@@ -77,7 +104,10 @@ class Candidates(RankStateCase):
         self.assertEqual([row["key"] for row in out["selected"]], ["a"])
         self.assertEqual(
             set(out["selected"][0]),
-            {"key", "title", "company", "url", "portal", "deadline", "posted_date"},
+            {
+                "key", "title", "company", "url", "portal", "deadline", "posted_date",
+                "seniority", "experience_years_min",
+            },
             "the projection is the point: strengths/gaps and every other stored field "
             "stay on disk rather than entering the conversation",
         )
@@ -281,16 +311,26 @@ class Sweep(RankStateCase):
 
 
 class Apply(RankStateCase):
-    def results(self, payload):
+    def results(self, payload, default_gate=True):
+        prepared = []
+        for result in payload:
+            if (
+                default_gate
+                and isinstance(result, dict)
+                and result.get("status", "scored") == "scored"
+                and "experience_gate" not in result
+            ):
+                result = dict(result, experience_gate=eligible_gate())
+            prepared.append(result)
         path = self.tmp / "results.json"
-        path.write_text(json.dumps(payload), encoding="utf-8")
+        path.write_text(json.dumps(prepared), encoding="utf-8")
         return str(path)
 
     def _scored(self, **extra):
         base = {"key": "a", "status": "scored", "deadline": None,
                 "scores": {d: 80 for d in ("technical", "experience", "behavioral", "career")},
                 "location_verdict": "PASS", "language_gate": "PASS", "language": "en",
-                "strengths": ["s"], "gaps": ["g"]}
+                "strengths": ["s"], "gaps": ["g"], "experience_gate": eligible_gate()}
         base.update(extra)
         return base
 
@@ -336,10 +376,70 @@ class Apply(RankStateCase):
         self.assertEqual([row["guard"] for row in out["ranked"]], ["clean", "clean", "⚠ 1 instruction-like line - review before continuing"])
 
     def test_apply_drops_a_stale_guard_when_rescored_without_one(self):
-        self.write_state({"a": entry(status="ranked", guard="⚠ old", rank_score=50, rank_date="2026-08-01")})
+        self.write_state({"a": entry(status="ranked", guard="? old", rank_score=50, rank_date="2026-08-01")})
         out = self.run_tool("apply", "--results", self.results([self._scored()]))
         self.assertNotIn("guard", self.read_state()["a"])
         self.assertIsNone(out["ranked"][0]["guard"])
+
+    def test_apply_persists_the_gate_and_keeps_review_jobs_out_of_the_shortlist(self):
+        self.write_state({"a": entry(status="new")})
+        out = self.run_tool(
+            "apply",
+            "--results",
+            self.results([self._scored(experience_gate=review_gate())]),
+        )
+        self.assertEqual(out["ranked"], [])
+        self.assertEqual([row["key"] for row in out["experience_blocked"]], ["a"])
+        self.assertEqual(out["experience_blocked"][0]["experience_verdict"], "REVIEW")
+        self.assertEqual(out["experience_blocked"][0]["experience_reason_code"], "review_ambiguous_range")
+        stored = self.read_state()["a"]
+        self.assertEqual(stored["experience_gate"]["verdict"], "REVIEW")
+        self.assertEqual(stored["status"], "ranked")
+
+    def test_apply_treats_a_missing_gate_as_review_not_eligible(self):
+        self.write_state({"a": entry(status="new")})
+        out = self.run_tool(
+            "apply",
+            "--results",
+            self.results([self._scored(experience_gate=None)], default_gate=False),
+        )
+        self.assertEqual(out["ranked"], [])
+        self.assertEqual([row["key"] for row in out["experience_blocked"]], ["a"])
+        self.assertEqual(out["experience_blocked"][0]["experience_reason_code"], "review_missing_gate")
+        self.assertEqual(
+            self.read_state()["a"]["experience_gate"]["reason_code"], "review_missing_gate"
+        )
+
+    def test_apply_allows_a_fresh_logged_override_but_not_a_stale_one(self):
+        gate = review_gate()
+        for override_at, expected in (("2026-09-03T13:00:00Z", True), ("2026-09-03T11:00:00Z", False)):
+            with self.subTest(override_at=override_at):
+                self.write_state(
+                    {
+                        "a": entry(
+                            status="new",
+                            experience_gate=gate,
+                            experience_override={
+                                "reason": "manual review confirmed the posting is eligible",
+                                "at": override_at,
+                            },
+                        )
+                    }
+                )
+                out = self.run_tool(
+                    "apply",
+                    "--results",
+                    self.results([self._scored(experience_gate=gate)]),
+                )
+                self.assertEqual([row["key"] for row in out["ranked"]], ["a"] if expected else [])
+                self.assertEqual(
+                    [row["key"] for row in out["experience_blocked"]], [] if expected else ["a"]
+                )
+                self.assertEqual(
+                    out["ranked"][0]["experience_allowed"] if out["ranked"] else False,
+                    expected,
+                )
+
 
     def test_apply_truncates_and_rejects_non_string_guard(self):
         self.write_state({"a": entry(status="new"), "b": entry(status="new")})
@@ -691,8 +791,17 @@ class Unreachable(RankStateCase):
     RETRY_FIELDS = ("fetch_attempts", "first_unreachable", "last_fetch_error")
 
     def results(self, payload):
+        prepared = []
+        for result in payload:
+            if (
+                isinstance(result, dict)
+                and result.get("status", "scored") == "scored"
+                and "experience_gate" not in result
+            ):
+                result = dict(result, experience_gate=eligible_gate())
+            prepared.append(result)
         path = self.tmp / "results.json"
-        path.write_text(json.dumps(payload), encoding="utf-8")
+        path.write_text(json.dumps(prepared), encoding="utf-8")
         return str(path)
 
     def fail_fetch(self, now, error="403 after curl retry"):

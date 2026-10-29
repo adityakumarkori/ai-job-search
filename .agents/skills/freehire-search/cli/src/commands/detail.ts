@@ -14,6 +14,10 @@ function renderPlain(job: JobDetailResult): string {
   }
   field("Posted", job.date && job.date.slice(0, 10))
   field("Seniority", job.seniority)
+  field(
+    "Experience",
+    job.experience_years_min === null ? null : `${job.experience_years_min}+ years minimum`,
+  )
   field("Category", job.category)
   field("Employment", job.employment_type)
   field("Salary", job.salary)
@@ -43,6 +47,9 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
         `${job.company || "—"} · ${job.location || "—"}`,
         job.date ? `Posted: ${job.date.slice(0, 10)}` : "",
         job.seniority ? `Seniority: ${job.seniority}` : "",
+        job.experience_years_min === null
+          ? ""
+          : `Experience: ${job.experience_years_min}+ years minimum`,
         job.category ? `Category: ${job.category}` : "",
         job.employment_type ? `Employment: ${job.employment_type}` : "",
         job.salary ? `Salary: ${job.salary}` : "",
