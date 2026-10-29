@@ -86,7 +86,7 @@ cv/main_example.tex. This scope covers skill files only.
 
 ### If scope includes `documents`:
 
-Use Glob to list all files present in `documents/cv/`, `documents/linkedin/`, `documents/diplomas/`, `documents/references/`, `documents/projects/`, `documents/postings/`, and `documents/applications/`.
+Use Glob to list all files present in `documents/cv/`, `documents/linkedin/`, `documents/diplomas/`, `documents/references/`, `documents/projects/`, `documents/postings/`, `documents/applications/`, and `documents/phase3_test/`.
 
 Include nested and hidden user entries in the inventory. Each subfolder's tracked `.gitkeep` is a scaffold placeholder: exclude it from the deletion list and from the empty/non-empty decision, and preserve it.
 
@@ -115,6 +115,9 @@ documents/postings/
 
 documents/applications/
   - [subfolder/filename] or "(empty)"
+
+documents/phase3_test/
+  - [filename] or "(empty)"
 
 documents/README.md — NOT deleted (instructions file)
 ```
@@ -260,13 +263,13 @@ For each non-empty document subfolder, delete all user entries, including nested
 ```bash
 (
   set -e
-  for directory in documents documents/cv documents/linkedin documents/diplomas documents/references documents/projects documents/postings documents/applications; do
+  for directory in documents documents/cv documents/linkedin documents/diplomas documents/references documents/projects documents/postings documents/applications documents/phase3_test; do
     if [ -L "$directory" ]; then
       printf 'Reset stopped: %s is a symbolic link.\n' "$directory" >&2
       exit 1
     fi
   done
-  for directory in documents/cv documents/linkedin documents/diplomas documents/references documents/projects documents/postings documents/applications; do
+  for directory in documents/cv documents/linkedin documents/diplomas documents/references documents/projects documents/postings documents/applications documents/phase3_test; do
     [ -d "$directory" ] || continue
     find "$directory" -mindepth 1 -maxdepth 1 ! -name .gitkeep -exec rm -rf -- {} +
   done
