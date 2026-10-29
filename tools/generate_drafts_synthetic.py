@@ -14,6 +14,7 @@ Safety:
 """
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -59,6 +60,12 @@ def run_experience_gate(text: str, title: str | None = None) -> dict:
     if result.returncode != 0:
         raise RuntimeError(f"experience_gate failed: {result.stderr}")
     return json.loads(result.stdout.strip())
+
+
+def check_latex_available() -> list[str]:
+    """Return list of available LaTeX executables on PATH."""
+    candidates = ["lualatex", "xelatex", "pdflatex"]
+    return [exe for exe in candidates if shutil.which(exe)]
 
 
 # ---------------------------------------------------------------------------
@@ -289,10 +296,18 @@ def main(argv=None):
         cover_path.write_text(cover_content, encoding="utf-8")
         print(f"Cover-letter draft written to {cover_path}")
 
-        print(
-            "\nDrafts generated under documents/phase3_test/ (git-ignored). "
-            "Compile with lualatex/xelatex when a LaTeX distribution is available."
-        )
+        latex_exes = check_latex_available()
+        if latex_exes:
+            print(
+                f"\nDrafts generated under documents/phase3_test/ (git-ignored). "
+                f"Compile with {', '.join(latex_exes)} when ready."
+            )
+        else:
+            print(
+                "\nDrafts generated under documents/phase3_test/ (git-ignored). "
+                "No LaTeX executable (lualatex/xelatex/pdflatex) found on PATH. "
+                "PDF compilation is unavailable until a TeX distribution is installed."
+            )
     else:
         # REVIEW or INELIGIBLE -> abort, no docs
         print(

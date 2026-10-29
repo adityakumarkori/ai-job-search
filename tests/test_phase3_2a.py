@@ -141,5 +141,24 @@ class Phase3PDFLibraryTests(unittest.TestCase):
             self.fail("reportlab not available")
 
 
+class Phase3LaTeXAvailabilityTests(unittest.TestCase):
+    """Test LaTeX availability reporting when no TeX distribution is installed."""
+
+    def test_latex_unavailable_reported_when_no_executable(self):
+        """Generator should report LaTeX unavailability when no executable is on PATH."""
+        result = run_generator(JOB_ELIGIBLE)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("No LaTeX executable", result.stdout)
+        self.assertIn("PDF compilation is unavailable", result.stdout)
+
+    def test_no_pdf_generation_claim_without_latex(self):
+        """Generator must not claim PDFs were generated or verified without LaTeX."""
+        result = run_generator(JOB_ELIGIBLE)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("PDF compiled", result.stdout)
+        self.assertNotIn("page-count verification", result.stdout)
+        self.assertNotIn("layout verification succeeded", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
